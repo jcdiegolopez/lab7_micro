@@ -1,6 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <pthread.h>
+
+pthread_mutex_t candado;
+double montoTotalVentas = 0.0;
+double utilidadTotalMes = 0.0;
 
 struct Comida {
     char nombre[30];
@@ -8,6 +13,47 @@ struct Comida {
     double costo;
     double ventas;
 };
+
+void *calcularCostoVentas(void *arg) {
+    struct Comida *comida = (struct Comida *)arg;
+    
+
+    double montoVentasProducto = comida->ventas * comida->precio;
+    double utilidadProducto = montoVentasProducto - (comida->ventas * comida->costo);
+    
+
+    pthread_mutex_lock(&candado);
+    
+    montoTotalVentas += montoVentasProducto;
+    utilidadTotalMes += utilidadProducto;
+    
+    pthread_mutex_unlock(&candado);
+    
+    printf("Producto: %s\n  Ventas: %.2f\n  Utilidad: %.2f\n", comida->nombre, montoVentasProducto, utilidadProducto);
+    
+    return NULL;
+}
+
+void procesarVentasMes(struct Comida ventas[], int numElementos, const char *mes) {
+    pthread_t threads[numElementos];
+    
+    // Reiniciar variables a cada mes
+    montoTotalVentas = 0.0;
+    utilidadTotalMes = 0.0;
+
+    for (int i = 0; i < numElementos; i++) {
+        struct Comida *comida = &ventas[i];
+        pthread_create(&threads[i], NULL, calcularCostoVentas, comida);
+    }
+
+    for (int i = 0; i < numElementos; i++) {
+        pthread_join(threads[i], NULL);
+    }
+
+    printf("\nResultados del mes de %s:\n", mes);
+    printf("Monto total de ventas: %.2f\n", montoTotalVentas);
+    printf("Utilidad total del mes: %.2f\n", utilidadTotalMes);
+}
 
 int main() {
     // Arreglo de ventas para el mes de julio
@@ -34,16 +80,17 @@ int main() {
         {"Café tostado molido", 60.00, 20.0, 15.0}
     };
 
+    int numElementos = sizeof(ventasJulio) / sizeof(ventasJulio[0]);
+    pthread_mutex_init(&candado, NULL);
 
-    int numElementos = sizeof(ventasAgosto) / sizeof(ventasAgosto[0]);
+    // Procesar las ventas de julio
+    printf("\n\n-------------------Procesando ventas de julio-------------------------\n");
+    procesarVentasMes(ventasJulio, numElementos, "Julio");
 
-    for (int i = 0; i < numElementos; i++) {
-        printf("Producto: %s\n", ventasAgosto[i].nombre);
-        printf("Precio: $%.2f\n", ventasAgosto[i].precio);
-        printf("Costo: $%.2f\n", ventasAgosto[i].costo);
-        printf("Ventas: $%.2f\n", ventasAgosto[i].ventas);
-        printf("---------------------------------\n");
-    }
+    // Procesar las ventas de agosto
+    printf("\n\n-------------------Procesando ventas de Agosto------------------------\n");
+    procesarVentasMes(ventasAgosto, numElementos, "Agosto");
 
+    pthread_mutex_destroy(&candado);
     return 0;
 }
