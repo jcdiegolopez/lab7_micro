@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
+#include <unistd.h>
 
 pthread_mutex_t candado;
 double montoTotalVentas = 0.0;
@@ -21,7 +22,7 @@ void *calcularCostoVentas(void *arg) {
     double montoVentasProducto = comida->ventas * comida->precio;
     double utilidadProducto = montoVentasProducto - (comida->ventas * comida->costo);
     
-
+   
     pthread_mutex_lock(&candado);
     
     montoTotalVentas += montoVentasProducto;
@@ -29,8 +30,8 @@ void *calcularCostoVentas(void *arg) {
     
     pthread_mutex_unlock(&candado);
     
-    printf("Producto: %s\n  Ventas: %.2f\n  Utilidad: %.2f\n", comida->nombre, montoVentasProducto, utilidadProducto);
-    
+    printf("Thread ID: %lu\n Producto: %s\n  Ventas: %.2f\n  Utilidad: %.2f\n", pthread_self(),comida->nombre, montoVentasProducto, utilidadProducto);
+    sleep(1);
     return NULL;
 }
 
